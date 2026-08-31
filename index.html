@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Percent Difference & EV Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0b0f14;
+    --panel:#12181f;
+    --panel-2:#1a222c;
+    --border:#263241;
+    --text:#e7edf3;
+    --muted:#8ea0b3;
+    --accent:#3ddc97;
+    --accent-2:#5fb2ff;
+    --bad:#ff5c6c;
+    --warn:#ffb648;
+    --good-bg:rgba(61,220,151,0.12);
+    --bad-bg:rgba(255,92,108,0.12);
+    --warn-bg:rgba(255,182,72,0.10);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 800px at 20% -10%, #16202b 0%, var(--bg) 55%);
+    color:var(--text);
+    min-height:100vh;
+    padding:40px 16px 80px;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+  header{margin-bottom:28px;}
+  header h1{
+    font-size:1.7rem;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  header p{color:var(--muted);margin:0;font-size:0.95rem;}
+  .accent-word{color:var(--accent);}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:720px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:22px 22px 24px;
+  }
+  .card h2{
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    margin:0 0 16px;
+    font-weight:600;
+  }
+
+  label{
+    display:block;
+    font-size:0.85rem;
+    color:var(--muted);
+    margin:14px 0 6px;
+  }
+  label:first-of-type{margin-top:0;}
+  .hint{font-size:0.75rem;color:var(--muted);opacity:0.8;margin-top:4px;}
+
+  input[type=number]{
+    width:100%;
+    background:#0d1319;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:11px 12px;
+    color:var(--text);
+    font-size:1rem;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus{
+    border-color:var(--accent-2);
+    box-shadow:0 0 0 3px rgba(95,178,255,0.15);
+  }
+  .stake-row{display:flex; gap:14px;}
+  .stake-row > div{flex:1;}
+
+  .result-list{display:flex; flex-direction:column; gap:12px;}
+  .result{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:12px 14px;
+    border-radius:10px;
+    background:#0d1319;
+    border:1px solid var(--border);
+  }
+  .result .label{color:var(--muted); font-size:0.85rem;}
+  .result .value{font-size:1.05rem; font-weight:600; font-variant-numeric: tabular-nums;}
+  .result.big .value{font-size:1.3rem;}
+
+  .pos{color:var(--accent);}
+  .neg{color:var(--bad);}
+  .neu{color:var(--text);}
+
+  .verdict{
+    margin-top:18px;
+    padding:16px;
+    border-radius:10px;
+    text-align:center;
+    font-weight:600;
+    font-size:0.95rem;
+    border:1px solid var(--border);
+  }
+  .verdict.good{background:var(--good-bg); border-color:rgba(61,220,151,0.35); color:var(--accent);}
+  .verdict.warn{background:var(--warn-bg); border-color:rgba(255,182,72,0.35); color:var(--warn);}
+  .verdict.bad{background:var(--bad-bg); border-color:rgba(255,92,108,0.35); color:var(--bad);}
+  .verdict .sub{display:block; font-weight:400; color:var(--muted); font-size:0.8rem; margin-top:4px;}
+
+  .full-width{grid-column:1 / -1;}
+
+  footer{
+    margin-top:28px;
+    text-align:center;
+    color:var(--muted);
+    font-size:0.78rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Percent Difference <span class="accent-word">&</span> EV Calculator</h1>
+    <p>American odds in (+ or −) — simple percent difference and actual expected value, side by side.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Inputs</h2>
+
+      <label for="fairOdds">Fair / True Odds (American)</label>
+      <input type="number" id="fairOdds" placeholder="e.g. -150 or 150" value="-150">
+      <div class="hint">The line you're treating as fair. A 25% sportsbook vig is automatically stripped out before it's used below.</div>
+
+      <label for="offeredOdds">Sportsbook Offered Odds (American)</label>
+      <input type="number" id="offeredOdds" placeholder="e.g. -110 or 130" value="130">
+      <div class="hint">The price actually available at the book.</div>
+
+      <div class="stake-row">
+        <div>
+          <label for="stake">Stake ($)</label>
+          <input type="number" id="stake" placeholder="100" value="100">
+        </div>
+        <div>
+          <label for="threshold">Highlight Threshold (%)</label>
+          <input type="number" id="threshold" placeholder="25" value="25">
+        </div>
+      </div>
+      <div class="hint">Verdict badge turns green once actual EV clears this threshold.</div>
+    </div>
+
+    <div class="card">
+      <h2>Probabilities & Odds</h2>
+      <div class="result-list">
+        <div class="result">
+          <span class="label">Fair implied probability <span class="hint" style="display:inline">(25% vig removed)</span></span>
+          <span class="value neu" id="fairProb">—</span>
+        </div>
+        <div class="result">
+          <span class="label">Offered implied probability</span>
+          <span class="value neu" id="offeredProb">—</span>
+        </div>
+        <div class="result">
+          <span class="label">Fair decimal odds</span>
+          <span class="value neu" id="fairDec">—</span>
+        </div>
+        <div class="result">
+          <span class="label">Offered decimal odds</span>
+          <span class="value neu" id="offeredDec">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h2>Edge &amp; Expected Value</h2>
+      <div class="result-list">
+        <div class="result big">
+          <span class="label">Simple % Difference <span class="hint" style="display:inline">(offered vs. fair payout)</span></span>
+          <span class="value" id="simpleDiff">—</span>
+        </div>
+        <div class="result big">
+          <span class="label">Actual EV % <span class="hint" style="display:inline">(true win probability applied to offered odds)</span></span>
+          <span class="value" id="actualEvPct">—</span>
+        </div>
+        <div class="result big">
+          <span class="label">Actual EV $ <span class="hint" style="display:inline">on stake entered above</span></span>
+          <span class="value" id="actualEvDollar">—</span>
+        </div>
+      </div>
+
+      <div class="verdict" id="verdict">Enter odds to see verdict.</div>
+    </div>
+  </div>
+
+  <footer>All figures assume the "fair odds" input reflects true, de-vigged win probability. For informational use only.</footer>
+</div>
+
+<script>
+function americanToDecimal(odds){
+  if (odds > 0) return 1 + odds/100;
+  if (odds < 0) return 1 + 100/Math.abs(odds);
+  return NaN;
+}
+function americanToProb(odds){
+  if (odds > 0) return 100/(odds+100);
+  if (odds < 0) return Math.abs(odds)/(Math.abs(odds)+100);
+  return NaN;
+}
+
+// Actual EV% from American odds + win probability (drop minus / add 100 / multiply by prob / adjust / divide)
+function evPercentFromOdds(odds, probability){
+  if (!isFinite(odds) || !isFinite(probability)) return NaN;
+  if (odds < 0) {
+    const o = Math.abs(odds);
+    return ((((o + 100) * probability) - o) / o) * 100;
+  }
+  if (odds > 0) {
+    return ((((odds + 100) * probability) - 100) / 100) * 100;
+  }
+  return NaN;
+}
+
+function fmtPct(x, digits=2){
+  if (!isFinite(x)) return '—';
+  return (x>=0?'+':'') + x.toFixed(digits) + '%';
+}
+function fmtDollar(x){
+  if (!isFinite(x)) return '—';
+  return (x>=0?'+$':'-$') + Math.abs(x).toFixed(2);
+}
+function signClass(x){
+  if (!isFinite(x)) return 'neu';
+  if (x > 0) return 'pos';
+  if (x < 0) return 'neg';
+  return 'neu';
+}
+
+const fairOddsEl = document.getElementById('fairOdds');
+const offeredOddsEl = document.getElementById('offeredOdds');
+const stakeEl = document.getElementById('stake');
+const thresholdEl = document.getElementById('threshold');
+
+function recalc(){
+  const fairOdds = parseFloat(fairOddsEl.value);
+  const offeredOdds = parseFloat(offeredOddsEl.value);
+  const stake = parseFloat(stakeEl.value);
+  const threshold = parseFloat(thresholdEl.value);
+
+  const VIG_RATE = 0.25;
+  const offeredProb = americanToProb(offeredOdds);
+  const offeredDec = americanToDecimal(offeredOdds);
+
+  // Strip the assumed 25% sportsbook vig out of the entered "fair" line before using it.
+  const fairDecRaw = americanToDecimal(fairOdds);
+  const fairDec = isFinite(fairDecRaw) ? 1 + (fairDecRaw - 1) / (1 - VIG_RATE) : NaN;
+  const fairProb = isFinite(fairDec) && fairDec > 0 ? 1 / fairDec : NaN;
+
+  document.getElementById('fairProb').textContent = isFinite(fairProb) ? (fairProb*100).toFixed(2)+'%' : '—';
+  document.getElementById('offeredProb').textContent = isFinite(offeredProb) ? (offeredProb*100).toFixed(2)+'%' : '—';
+  document.getElementById('fairDec').textContent = isFinite(fairDec) ? fairDec.toFixed(3) : '—';
+  document.getElementById('offeredDec').textContent = isFinite(offeredDec) ? offeredDec.toFixed(3) : '—';
+
+  // Simple % difference: offered payout vs fair payout (decimal odds comparison)
+  const simpleDiff = isFinite(fairDec) && isFinite(offeredDec) && fairDec !== 0
+    ? ((offeredDec - fairDec) / fairDec) * 100
+    : NaN;
+
+  // Actual EV: true probability (from fair odds) applied to the offered odds
+  const evPct = evPercentFromOdds(offeredOdds, fairProb);
+  const evDollar = isFinite(evPct) && isFinite(stake) ? (evPct/100) * stake : NaN;
+
+  const simpleDiffEl = document.getElementById('simpleDiff');
+  simpleDiffEl.textContent = fmtPct(simpleDiff);
+  simpleDiffEl.className = 'value ' + signClass(simpleDiff);
+
+  const evPctEl = document.getElementById('actualEvPct');
+  evPctEl.textContent = fmtPct(evPct);
+  evPctEl.className = 'value ' + signClass(evPct);
+
+  const evDollarEl = document.getElementById('actualEvDollar');
+  evDollarEl.textContent = fmtDollar(evDollar);
+  evDollarEl.className = 'value ' + signClass(evDollar);
+
+  const verdict = document.getElementById('verdict');
+  const th = isFinite(threshold) ? threshold : 25;
+
+  if (!isFinite(evPct)) {
+    verdict.className = 'verdict';
+    verdict.innerHTML = 'Enter valid odds to see verdict.';
+  } else if (evPct >= th) {
+    verdict.className = 'verdict good';
+    verdict.innerHTML = `✅ Strong +EV Bet — clears ${th}% threshold<span class="sub">Actual EV ${fmtPct(evPct)} on this stake</span>`;
+  } else if (evPct > 0) {
+    verdict.className = 'verdict warn';
+    verdict.innerHTML = `⚠️ +EV, but below ${th}% threshold<span class="sub">Actual EV ${fmtPct(evPct)}</span>`;
+  } else {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = `❌ Negative EV Bet<span class="sub">Actual EV ${fmtPct(evPct)}</span>`;
+  }
+}
+
+[fairOddsEl, offeredOddsEl, stakeEl, thresholdEl].forEach(el => el.addEventListener('input', recalc));
+recalc();
+</script>
+</body>
+</html>
